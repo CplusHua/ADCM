@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/nicle-lin/ADupgrade/lib/update"
+	"github.com/nicle-lin/ADCM/lib/update"
 
 
 	"os"
