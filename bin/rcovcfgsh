@@ -1,0 +1,6 @@
+cp -a -f /config/passwd /stmp/passwd
+rm -r -f /config/*
+tar Pxzf /stmp/cfgbk
+cp -a -f /stmp/passwd /config/passwd
+sync
+

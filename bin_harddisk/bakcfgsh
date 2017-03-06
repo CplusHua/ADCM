@@ -1,0 +1,6 @@
+mkdir /tmp/updateme
+cp /etc/sysconfig/ /tmp/updateme/ -af
+cp /etc/sinfor /tmp/updateme/ -af
+cp /etc/ppp/  /tmp/updateme/ -af
+cp /etc/boa/	/tmp/updateme/ -af
+tar czf /stmp/cfgbk /tmp/updateme/*

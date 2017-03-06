@@ -1,0 +1,6 @@
+tar zxf /stmp/cfgbk
+cp /tmp/updateme/* /etc/ -af
+sync
+
+
+

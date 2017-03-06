@@ -1,0 +1,5 @@
+mv /stmp/cfgbk /stmp/cfgbk.gz
+cd /;gzip -d /stmp/cfgbk.gz
+cd /;tar xf /stmp/cfgbk
+sync
+

@@ -1,0 +1,7 @@
+if [ -d /etc/boa ]; then
+	cd /;tar cf /stmp/cfgbk /etc/sysconfig/ /etc/ppp/ /etc/sinfor/ /etc/rc.d/ /etc/boa/
+else
+	cd /;tar cf /stmp/cfgbk /etc/sysconfig/ /etc/ppp/ /etc/sinfor/ /etc/rc.d/
+fi
+cd /;gzip /stmp/cfgbk
+mv /stmp/cfgbk.gz /stmp/cfgbk

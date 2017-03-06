@@ -1,0 +1,4 @@
+umount /stmp
+mke2fs  /dev/ram3
+mount /dev/ram3 /stmp
+tar Pczf /stmp/cfgbk /config

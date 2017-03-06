@@ -1,0 +1,6 @@
+umount /stmp
+mke2fs  /dev/ram3
+mount /dev/ram3 /stmp
+if [ $? != 0 ]; then
+	rm -r -f /stmp/*
+fi
