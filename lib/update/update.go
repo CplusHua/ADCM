@@ -296,6 +296,7 @@ func ThreadUpdateAllPackages(S *Session,U *Update)error  {
 }
 
 func UpdateUpgradeHistory(S *Session,U *Update)error  {
+	log.Info("[UpdateUpgradeHistory]begin to update Upgrade History")
 	msg, err := Exec(S,U,"ls "+UPDHISTORY_SCRIPT)
 	if err != nil {
 		log.Debug("[UpdateUpgradeHistory] exec ls %s fail,msg:%s,err:%s",UPDHISTORY_SCRIPT,msg,err)
@@ -310,12 +311,14 @@ func UpdateUpgradeHistory(S *Session,U *Update)error  {
 		log.Error("[UpdateUpgradeHistroy]exec %s error:%s,msg:%s",UPDHISTORY_SCRIPT,err,msg)
 		return fmt.Errorf("[UpdateUpgradeHistroy]exec %s error:%s,msg:%s",UPDHISTORY_SCRIPT,err,msg)
 	}
+	log.Info("[UpdateUpgradeHistory]update Upgrade History success")
 	return nil
 }
 
 //TODO: ini format file
 //TODO: now
 func ConfirmRebootDevice(S *Session,U *Update)error{
+	log.Info("[ConfirmRebootDevice]begin to Confirm Reboot Device")
 	cfg, err := ini.Load(filepath.Join(U.SingleUnpkg,"package.conf"))
 	if err != nil {
 		return fmt.Errorf("[ConfirmRebootDevice]Load package.conf fail:%s",err)
@@ -323,13 +326,15 @@ func ConfirmRebootDevice(S *Session,U *Update)error{
 	value := cfg.Section("restart").Key("needrestart").String()
 
 	if strings.ToLower(value) == "yes" {
+		log.Debug("[ConfirmRebootDevice] need to reboot")
 		if msg,err := Exec(S,U,"reboot"); err !=nil {
 			log.Error("[ConfirmRebootDevice]exec reboot error:%s,msg:%s",err,msg)
 			return fmt.Errorf("[ConfirmRebootDevice]exec reboot error:%s,msg:%s",err,msg)
 		}
 	}else{
-		log.Debug("[ConfirmRebootDevice]don't need to  reboot")
+		log.Debug("[ConfirmRebootDevice]don't need to reboot")
 	}
+	log.Info("[ConfirmRebootDevice]Confirm Reboot Device success")
 	return nil
 }
 
