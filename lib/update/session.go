@@ -129,31 +129,14 @@ func (S *Session) ReadPacket() error {
 		if err != nil && err != io.EOF{
 			return fmt.Errorf("[Readpacket] read Sec Data error:",err)
 		}
-		log.Info("[ReadPacket]read len:%d,need len:%d",n,secDataLen)
 		realNeed = realNeed + n
-		log.Info("---------realNeed %d--------------",realNeed)
 		if realNeed == int(secDataLen) || n == 0 {
 			realNeed = 0
-			fmt.Println("------------break----------------------------")
 			break
 		}
 
 	}
-	fmt.Println("-------------------------------------------------------------------")
-
-	/*
-
-	if err != nil {
-		log.Error("[ReadPacket]Read Sec Data Frame error:%s",err)
-		return fmt.Errorf("[ReadPacket]Read Sec Data Frame error:%s",err)
-	}
-	if n != int(secDataLen) {
-		log.Error("[ReadPacket]Read Sec Data Frame len %d is not equal need Read Sec Data Frame len %d",n,int(secDataLen))
-		//TODO: maybe the server's problem or network problem
-		//return fmt.Errorf("[ReadPacket]Read Sec Data Frame len %d is not equal need Read Sec Data Frame len %d",n,int(secDataLen))
-	}
-	*/
-
+	
 	var decSecData []byte
 	//step 4: 由于暂时没法知道解密之后的数据是多大，所以直接先分配最大的
 	//TODO:   当然是可以通过EncLen这个函数反过来推知，暂时不做　　
@@ -201,7 +184,6 @@ func (S *Session) ReadPacket() error {
 	S.typ = secDataType
 	S.length = secDataLen
 	S.data = secDataHeader.buff[secDataHeader.pos:]
-	//log.Debug("[ReadPacket]read data is:\n%s",string(S.data))
 	return nil
 }
 

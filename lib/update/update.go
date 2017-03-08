@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
@@ -27,8 +26,6 @@ func IsResultOK(data string) bool {
 }
 
 func IsGetOver(data string) bool {
-	log.Debug("[IsGetOver]CMD[GETOVER]is %s",CMD[GETOVER])
-	log.Debug("[IsGetOver],data:\n%s",data)
 	return strings.Contains(data, CMD[GETOVER])
 }
 
@@ -73,33 +70,65 @@ func IsArmChip(appVersion string) bool {
 //Get file from Server, and download,write it to the LocalFile
 func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 	if err := DoCmd(S, CMD[GET], RemoteFile);err != nil {
-		return "", fmt.Errorf("the server can't send the file:%s.check the file exists,err msg:%s", RemoteFile,err)
+		return "", fmt.Errorf("[Get]the server can't send the file:%s.check the file exists,err msg:%s", RemoteFile,err)
 	}
-	var allData []byte
-	if err := S.ReadPacket();err != nil {
-		log.Error("[Get]Get data error:%s",err)
-		log.Error("[Get]Get data is :%s",string(S.data))
-		return "",fmt.Errorf("[Get]Get data error:%s",err)
-	}
-	for S.typ == DATAFRAME {
-		allData = append(allData, S.data...)
-		if err := S.ReadPacket(); err != nil {
-			log.Error("[Get]ReadPacket error:%s",err)
-			return "",fmt.Errorf("[Get]ReadPacket error:%s",err)
+
+	if LocalFile != "" {
+		file, err := os.OpenFile(LocalFile,os.O_WRONLY|os.O_CREATE|os.O_TRUNC,0666)
+		if err != nil {
+			return "",fmt.Errorf("[Get]OpenFile %s fail:%s",LocalFile,err)
 		}
-	}
-	//when readpacket type is not DATAFRAME,it must be CMDFRAME
-	//So,just it IsGetOver use S.data
-	if !IsGetOver(string(S.data)) {
-		log.Debug("[Get]Get all data:\n%s",string(S.data))
-		return "", fmt.Errorf("[Get]Not found getover flag while get the file:%s\n", RemoteFile)
-	}
-	if LocalFile == "" {
+		defer file.Close()
+		bufW := bufio.NewWriter(file)
+		if err := S.ReadPacket();err != nil {
+			log.Error("[Get]Get data error:%s",err)
+			log.Error("[Get]Get data is :%s",string(S.data))
+			return "",fmt.Errorf("[Get]Get data error:%s",err)
+		}
+		for S.typ == DATAFRAME {
+			if byteWN, err := bufW.Write(S.data);err != nil || byteWN != len(S.data){
+				return "",fmt.Errorf("[Get]write error: %s",err)
+			}
+			if err := S.ReadPacket(); err != nil {
+				log.Error("[Get]ReadPacket error:%s",err)
+				return "",fmt.Errorf("[Get]ReadPacket error:%s",err)
+			}
+		}
+		if err := bufW.Flush();err != nil {
+			return "",fmt.Errorf("[Get]Flush data error:%s",err)
+		}
+		//when readpacket type is not DATAFRAME,it must be CMDFRAME
+		//So,just it IsGetOver use S.data
+		if !IsGetOver(string(S.data)) {
+			log.Debug("[Get]Get all data:\n%s",string(S.data))
+			return "", fmt.Errorf("[Get]Not found getover flag while get the file:%s\n", RemoteFile)
+		}
+
+	}else{
+		if err := S.ReadPacket();err != nil {
+			log.Error("[Get]Get data error:%s",err)
+			log.Error("[Get]Get data is :%s",string(S.data))
+			return "",fmt.Errorf("[Get]Get data error:%s",err)
+		}
+		var allData []byte
+		for S.typ == DATAFRAME {
+			allData = append(allData, S.data...)
+			if err := S.ReadPacket(); err != nil {
+				log.Error("[Get]ReadPacket error:%s",err)
+				return "",fmt.Errorf("[Get]ReadPacket error:%s",err)
+			}
+		}
+		//when readpacket type is not DATAFRAME,it must be CMDFRAME
+		//So,just it IsGetOver use S.data
+		if !IsGetOver(string(S.data)) {
+			log.Debug("[Get]Get all data:\n%s",string(S.data))
+			return "", fmt.Errorf("[Get]Not found getover flag while get the file:%s\n", RemoteFile)
+		}
+
 		return string(allData), nil
 	}
 
-	err := ioutil.WriteFile(LocalFile, allData, 0666)
-	return "", err
+	return "", nil
 }
 
 //return true,it mean command execute success by peer

@@ -2,11 +2,7 @@ package main
 
 import (
 	"github.com/nicle-lin/ADCM/lib/update"
-
-
 	"os"
-
-	//"github.com/astaxie/beego/logs"
 	"fmt"
 )
 
