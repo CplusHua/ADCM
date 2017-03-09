@@ -67,13 +67,7 @@ func JoinCmd(cmd string, params []params) []byte {
 		b = append(b, []byte(v.param2)...)
 		b = append(b, []byte("\n")...)
 	}
-
-
-	//in go lang,it must octal express Null character
-	//b = append(b, []byte("\000")...)
 	length := len(b)
-	//log.Info("params len:%d",len(params))
-	//log.Info("params msg:%s",string(b[:length]))
 	return b[:length]
 }
 
@@ -99,9 +93,6 @@ func MakeCmdStr(cmdType, command string) []byte {
 
 func MakeCmdPacket(cmdType string, params string) ([]byte, error) {
 	cmdByte := MakeCmdStr(cmdType, params)
-	//fmt.Printf("cmdByte:%#v\n", cmdByte)
-	//fmt.Println("cmdByte:",string(cmdByte))
-	//fmt.Println("-------------------------------------")
 	return BuildFrame(CMDFRAME, cmdByte)
 }
 
@@ -124,14 +115,12 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	//fmt.Printf("secData:%#v\n", sec.buff[:sec.pos])
+
 
 	secLength := EncLen(sec.pos)
 	frameBuff := make([]byte, secLength+FRAME_HEADER_LEN)
 	frame := NewLEStream(frameBuff)
 	frame.WriteUint16(FRAMEFLAG)
-	//fmt.Printf("before enc secData len:%x\n", sec.pos)
-	//fmt.Printf("after enc secData len:%x\n", secLength)
 	frame.WriteUint16(uint16(secLength))
 
 	tempBuff := make([]byte, secLength+FRAME_HEADER_LEN)

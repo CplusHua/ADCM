@@ -172,7 +172,7 @@ func Exec(S *Session, U *Update, Command string) (string, error) {
 		return getResult, fmt.Errorf("[Exec]Get %s fail:%s",U.TempRstFile,err1)
 	}
 	//TODO I should write a delete  white space by myself
-	if strings.Fields(getReturn)[0] != "0" || doRet != nil {
+	if strings.TrimSpace(getReturn) != "0" || doRet != nil {
 		log.Error("[Exec]Exec %s fail:%s",Command,doRet)
 		log.Debug("[Exec]return msg:%s",getReturn)
 		return getResult, fmt.Errorf("[Exec]Exec %s fail:%s",Command,doRet)
