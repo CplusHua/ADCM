@@ -90,16 +90,21 @@ func (S *Session) ReadPacket() error {
 	frameHeaderBuf := make([]byte, FRAME_HEADER_LEN)
 	var n int
 	var err error
+	var realNeed int = 0
 	//step 2:　读取frame长度大小的数据
-	n, err = S.Conn.Read(frameHeaderBuf)
-	if err != nil {
-		log.Error("[ReadPacket]Read Frame error:%s",err)
-		return fmt.Errorf("[ReadPacket]Read Frame error:%s",err)
+	for {
+		n, err = S.Conn.Read(frameHeaderBuf[realNeed:])
+		if err != nil && err != io.EOF {
+			log.Error("[ReadPacket]Read Frame error:%s",err)
+			return fmt.Errorf("[ReadPacket]Read Frame error:%s",err)
+		}
+		realNeed = realNeed + n
+		if realNeed == FRAME_HEADER_LEN || 0 == n {
+			realNeed = 0
+			break
+		}
 	}
-	if n != FRAME_HEADER_LEN {
-		log.Error("[ReadPacket]frame len is wrong:%d", n)
-		return fmt.Errorf("[ReadPacket]frame len is wrong:%d", n)
-	}
+
 	frameHeader := NewLEStream(frameHeaderBuf)
 	frameFlag, errFlag := frameHeader.ReadUint16()
 	if errFlag != nil {
@@ -123,7 +128,7 @@ func (S *Session) ReadPacket() error {
 	}
 	//step 3: 分配加了密的sec Data的长度的空间
 	encSecData := make([]byte, secDataLen)
-	var realNeed int = 0
+
 	for {
 		n, err = S.Conn.Read(encSecData[realNeed:])
 		if err != nil && err != io.EOF{
