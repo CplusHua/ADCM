@@ -387,20 +387,11 @@ func Upgrade(ip, port, password, ssu string) error {
 	if err := PrepareUpgrade(S, U); err != nil {return err}
 
 	if err := UnpackPackage(U);err != nil {return err}
-	//apps := GetApps(U.SingleUnpkg)
-	/*
+	apps := GetApps(U.SingleUnpkg)
 	for _, v := range apps {
 		if err := EncFile(v, v+"_des"); err != nil {return err}
 	}
-	*/
-	/*
-	for _,v := range apps{
-		if err := EncFileByEnc(v, v+"_des");err != nil{
-			return err
-		}
-	}
-	*/
-	
+
 	if err := ThreadUpdateAllPackages(S,U); err != nil {return err}
 	if err := UpdateUpgradeHistory(S,U);err != nil {return err}
 	if err := ConfirmRebootDevice(S, U); err != nil {return err}

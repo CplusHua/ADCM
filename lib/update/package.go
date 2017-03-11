@@ -250,13 +250,13 @@ func PutDesApp(S *Session,LocalFile, RemoteFile string) error {
 
 	buf := make([]byte, 1038)
 	bufRead := bufio.NewReader(file)
-
+	var n int = 0
 	for{
-		n, err1 := bufRead.Read(buf)
-		if err1 != nil && err1 != io.EOF {
-			return err1
+		n, err = bufRead.Read(buf)
+		if err != nil && err != io.EOF {
+			return err
 		}
-		if 0 == n {
+		if 0 == n{
 			break
 		}
 		if err := S.WritePacket(buf[:n]);err != nil {
@@ -277,10 +277,9 @@ func UpdateApps(S *Session,U *Update,desApps []string)error {
 	for _, desApp := range desApps{
 		app := strings.TrimSuffix(desApp,"_des")
 		appsh := strings.Replace(app,"app","appsh",1)
-		log.Info("[UpdateApps]uploading %s to /stmp/app",app)
-		if err := Put(S,app,"/stmp/app");err != nil {return err}
-		//if err := PutDesApp(S,app,"/stmp/app");err != nil {return err}
-		log.Info("[UpdateApps]upload %s to /stmp/app: success",app)
+		log.Info("[UpdateApps]uploading %s to /stmp/app",desApp)
+		if err := PutDesApp(S,desApp,"/stmp/app");err != nil {return err}
+		log.Info("[UpdateApps]upload %s to /stmp/app: success",desApp)
 
 		log.Info("[UpdateApps]start to put %s to %s",appsh,U.ServerAppSh)
 		if err := Put(S,appsh,U.ServerAppSh);err != nil {return err}
@@ -307,8 +306,7 @@ func RestoreDefaultPriv()error{
 func UpdateSinglePacket(S *Session,U *Update)error{
 	if err := CheckUpdateCondition(S, U); err != nil {return err}
 	log.Info("[UpdateSinglePacket]appre exec success")
-	//desApps := GetDesApps(U.SingleUnpkg)
-	desApps := GetApps(U.SingleUnpkg)
+	desApps := GetDesApps(U.SingleUnpkg)
 	if err := UpdateApps(S,U,desApps); err != nil {return err}
 	return nil
 }

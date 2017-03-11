@@ -599,7 +599,6 @@ func EncFile(srcFile, dstFile string)error  {
 
 		data, errMake := MakeDataPacket(srcBuf[:n])
 		if errMake != nil {return errMake}
-
 		wn,errWrite := dstfileWrite.Write(data)
 		if errWrite != nil {return errWrite}
 
