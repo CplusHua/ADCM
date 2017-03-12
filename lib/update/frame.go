@@ -1,8 +1,5 @@
 package update
 
-
-
-
 /* base frame
 * a frame begin with "0xDB0xF3".....
  */
@@ -38,7 +35,6 @@ var CMD = [MaxCmdLen]string{
 }
 
 type SecData struct {
-	flag   uint16
 	length uint16
 	typ    byte
 	data   []byte
@@ -52,14 +48,11 @@ type params struct {
 	param2 string
 }
 
-
 //命令格式组合
 func JoinCmd(cmd string, params []params) []byte {
 	var b []byte
 	b = append(b, []byte(cmd)...)
 	b = append(b, []byte("\n")...)
-
-	//TODO: if params is empty,do not next
 
 	for _, v := range params {
 		b = append(b, []byte(v.param1)...)
@@ -116,7 +109,6 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 		return nil, err
 	}
 
-
 	secLength := EncLen(sec.pos)
 	frameBuff := make([]byte, secLength+FRAME_HEADER_LEN)
 	frame := NewLEStream(frameBuff)
@@ -134,6 +126,5 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	//fmt.Printf("whole frame length:%x\n", frame.pos)
 	return frame.buff[:frame.pos], nil
 }

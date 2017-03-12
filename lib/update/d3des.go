@@ -523,69 +523,70 @@ int enc_len(int len)
 */
 import "C"
 import (
-	"fmt"
-	"os"
 	"bufio"
+	"fmt"
 	"io"
+	"os"
 )
+
 /*
 func EncLen(len int) int{
 	return int(C.enc_len(C.int(len)))
 }
 */
-func EncLen(len int) int{
-	if len % 8 == 0 {
+func EncLen(len int) int {
+	if len%8 == 0 {
 		return len + 2
-	}else{
-		return (len / 8 + 1) * 8 +2
+	} else {
+		return (len/8+1)*8 + 2
 	}
 }
 
 //int enc(const char* pass, unsigned char *inbuf, int inlen, unsigned char *outbuf)
-func Encrypt(inbuf []byte,outbuf []byte)(outbyte []byte,err error){
+func Encrypt(inbuf []byte, outbuf []byte) (outbyte []byte, err error) {
 	passptr := C.CString(DES_KEY)
 	inbufptr := C.CBytes(inbuf)
-	outbufptr  := C.CBytes(outbuf)
+	outbufptr := C.CBytes(outbuf)
 	inlen := len(inbuf)
-	ret := C.enc(passptr,(*C.uchar)(inbufptr),C.int(inlen),(*C.uchar)(outbufptr))
+	ret := C.enc(passptr, (*C.uchar)(inbufptr), C.int(inlen), (*C.uchar)(outbufptr))
 
-	if ret == 0{
-		outlen := EncLen(inlen)
-		outbuf = C.GoBytes(outbufptr,C.int(outlen))
-		return outbuf[:outlen],nil
-	}else {
-		return nil,fmt.Errorf("encrypt fail")
+	if ret == 0 {
+		outLen := EncLen(inlen)
+		outbuf = C.GoBytes(outbufptr, C.int(outLen))
+		return outbuf[:outLen], nil
 	}
+	return nil, fmt.Errorf("[Encrypt]encrypt fail")
+
 }
 
 //int dec(const char* pass, unsigned char *inbuf, int inlen, unsigned char *outbuf, int outlen)
-func Decrypt(inbuf []byte,outbuf []byte)( []byte, error){
+func Decrypt(inbuf []byte, outbuf []byte) ([]byte, error) {
 	passptr := C.CString(DES_KEY)
 	inbufptr := C.CBytes(inbuf)
-	outbufptr  := C.CBytes(outbuf)
+	outbufptr := C.CBytes(outbuf)
 	inlen := len(inbuf)
 	var outlen C.int
-	outlen = C.dec(passptr,(*C.uchar)(inbufptr),C.int(inlen),(*C.uchar)(outbufptr),outlen)
+	outlen = C.dec(passptr, (*C.uchar)(inbufptr), C.int(inlen), (*C.uchar)(outbufptr), outlen)
 
 	length := int(outlen)
-	if length != -1{
-		outbuf = C.GoBytes(outbufptr,outlen)
-		return outbuf[:length],nil
-	}else {
-		return nil,fmt.Errorf("decrypt fail")
+	if length != -1 {
+		outbuf = C.GoBytes(outbufptr, outlen)
+		return outbuf[:length], nil
 	}
-
+	return nil, fmt.Errorf("[Decrypt]decrypt fail")
 }
 
-
-func EncFile(srcFile, dstFile string)error  {
+func EncFile(srcFile, dstFile string) error {
 	srcfile, errSrc := os.Open(srcFile)
-	if errSrc != nil { return errSrc}
+	if errSrc != nil {
+		return errSrc
+	}
 	srcfileRead := bufio.NewReader(srcfile)
 
-
 	dstfile, errDst := os.Create(dstFile)
-	if errDst != nil {return  errDst}
+	if errDst != nil {
+		return errDst
+	}
 	dstfileWrite := bufio.NewWriter(dstfile)
 
 	defer srcfile.Close()
@@ -594,16 +595,28 @@ func EncFile(srcFile, dstFile string)error  {
 	srcBuf := make([]byte, MAX_DATA_LEN)
 	for {
 		n, errRead := srcfileRead.Read(srcBuf)
-		if errRead != nil && errRead != io.EOF {return errRead}
-		if 0 == n {break}
+		if errRead != nil && errRead != io.EOF {
+			return errRead
+		}
+		if 0 == n {
+			break
+		}
 
 		data, errMake := MakeDataPacket(srcBuf[:n])
-		if errMake != nil {return errMake}
-		wn,errWrite := dstfileWrite.Write(data)
-		if errWrite != nil {return errWrite}
+		if errMake != nil {
+			return errMake
+		}
+		wn, errWrite := dstfileWrite.Write(data)
+		if errWrite != nil {
+			return errWrite
+		}
 
-		if wn != len(data) {return fmt.Errorf("write data len is wrong %v",wn)}
-		if err := dstfileWrite.Flush(); err != nil {return err}
+		if wn != len(data) {
+			return fmt.Errorf("[Encfile]write data len is wrong %v", wn)
+		}
+		if err := dstfileWrite.Flush(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
