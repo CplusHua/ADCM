@@ -370,6 +370,7 @@ func ConfirmRebootDevice(S *Session, U *Update) error {
 			return fmt.Errorf("[ConfirmRebootDevice]exec reboot error:%s,msg:%s", err, msg)
 		}
 		log.Info("[ConfirmRebootDevice]Confirm Reboot Device success")
+		return nil
 	}
 
 	log.Debug("[ConfirmRebootDevice]don't need to reboot")

@@ -154,7 +154,7 @@ func InitDirectory(path string) error {
 			defer syscall.Umask(mask)
 		}
 	*/
-	if err := os.MkdirAll(path, 0666); err != nil {
+	if err := os.MkdirAll(path, 0776); err != nil {
 		return err
 	}
 	return nil
