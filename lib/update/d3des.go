@@ -9,8 +9,6 @@ package update
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <errno.h>
