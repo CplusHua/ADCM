@@ -13,11 +13,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"strconv"
 )
 
 var Flag uint16
-var m *sync.RWMutex = new(sync.RWMutex)
+var ssuMutex *sync.RWMutex = new(sync.RWMutex)
+var appMutex *sync.RWMutex = new(sync.RWMutex)
 
+/*
 //return false,the caller have to unpack the SSU,and inc Flag
 func GetFlag() bool {
 	m.RLock()
@@ -51,6 +54,7 @@ var once sync.Once
 func (S *Session) unpackSSU(ssu string) {
 
 }
+*/
 
 /*
 func UnpackSSU() {
@@ -126,16 +130,22 @@ func unpack(packPath, destPath, unpackTool, logFile string) error {
 
 }
 
-func unpackPackage(U *Update) error {
+func unpackPackage(md5 string,U *Update) error {
 	// function InitEnvironment has been init the path U.SingleUnpkg
 	log.Info("[UnpackPackage]begin to unpack the package")
-	logFile := filepath.Join(CurrentDirectory(), "7z.log")
-	return unpack(U.SSUPackage, U.SingleUnpkg, "7za", logFile)
+	logFile := filepath.Join(CurrentDirectory(), U.FolderPrefix, "7z.log")
+	if err := unpack(U.SSUPackage, U.SingleUnpkg, "7za", logFile);err != nil {
+		return err
+	}
+	WriteMd5ToConf(md5,)
+	if err := InitEnvironment(U); err != nil {
+		return "", err
+	}
 }
 
-func UnpackPackage(U *Update) error {
+func UnpackPackage(md5 string, U *Update) error {
 	if U.SSUType == PACKAGE_TYPE || U.SSUType == RESTORE_TYPE {
-		return unpackPackage(U)
+		return unpackPackage(md5,U)
 	}
 	return fmt.Errorf("[UnpackPackage]Package type %d is not support", U.SSUType)
 }
@@ -328,8 +338,11 @@ func NewUpdate() *Update {
 
 func InitClient(appVersion string) *Update {
 	U := NewUpdate()
-	U.FolderPrefix = RandomString(32)
 	U.CurrentWorkFolder = CurrentDirectory()
+	//U.FolderPrefix = RandomString(32)
+	U.FolderPrefix = "update/ssu/"
+	U.ssuConf = filepath.Join(U.CurrentWorkFolder, "update", "conf", "ssu.conf")
+	U.appConf = filepath.Join(U.CurrentWorkFolder, "update", "conf", "app.conf")
 	if IsArmChip(appVersion) {
 		U.TempExecFile, U.TempRstFile = ARM_LINUX_BASIC[0], ARM_LINUX_BASIC[1]
 		U.CustomErrFile, U.TempRetFile = ARM_LINUX_BASIC[2], ARM_LINUX_BASIC[3]
@@ -338,11 +351,11 @@ func InitClient(appVersion string) *Update {
 		U.ServerAppRe, U.ServerAppSh = ARM_LINUX_UPDATE[0], ARM_LINUX_UPDATE[1]
 		U.ServerCfgPre, U.ServerCfgSh = ARM_LINUX_UPDATE[2], ARM_LINUX_UPDATE[3]
 
-		U.LocalBackSh = filepath.Join(U.CurrentWorkFolder, "/arm_bin/bakcfgsh")
-		U.LocalPreCfgSh = filepath.Join(U.CurrentWorkFolder, "/arm_bin/prercovcfgsh")
-		U.LocalCfgSh = filepath.Join(U.CurrentWorkFolder, "/arm_bin/rcovcfgsh")
-		U.LocalUpdHistory = filepath.Join(U.CurrentWorkFolder, "/arm_bin/updhistory.sh")
-		U.LocalUpdCheck = filepath.Join(U.CurrentWorkFolder, "/arm_bin/updatercheck.sh")
+		U.LocalBackSh = filepath.Join(U.CurrentWorkFolder, "update", "/arm_bin/bakcfgsh")
+		U.LocalPreCfgSh = filepath.Join(U.CurrentWorkFolder, "update", "/arm_bin/prercovcfgsh")
+		U.LocalCfgSh = filepath.Join(U.CurrentWorkFolder, "update", "/arm_bin/rcovcfgsh")
+		U.LocalUpdHistory = filepath.Join(U.CurrentWorkFolder, "update", "/arm_bin/updhistory.sh")
+		U.LocalUpdCheck = filepath.Join(U.CurrentWorkFolder, "update", "/arm_bin/updatercheck.sh")
 
 		log.Info("[InitClient]The device is a arm platform,init arm info.")
 		return U
@@ -355,11 +368,11 @@ func InitClient(appVersion string) *Update {
 	U.ServerAppRe, U.ServerAppSh = X86_LINUX_UPDATE[0], X86_LINUX_UPDATE[1]
 	U.ServerCfgPre, U.ServerCfgSh = X86_LINUX_UPDATE[2], X86_LINUX_UPDATE[3]
 
-	U.LocalBackSh = filepath.Join(U.CurrentWorkFolder, "/bin/bakcfgsh")
-	U.LocalPreCfgSh = filepath.Join(U.CurrentWorkFolder, "/bin/prercovcfgsh")
-	U.LocalCfgSh = filepath.Join(U.CurrentWorkFolder, "/bin/rcovcfgsh")
-	U.LocalUpdHistory = filepath.Join(U.CurrentWorkFolder, "/bin/updhistory.sh")
-	U.LocalUpdCheck = filepath.Join(U.CurrentWorkFolder, "/bin/updatercheck.sh")
+	U.LocalBackSh = filepath.Join(U.CurrentWorkFolder, "update", "/bin/bakcfgsh")
+	U.LocalPreCfgSh = filepath.Join(U.CurrentWorkFolder, "update", "/bin/prercovcfgsh")
+	U.LocalCfgSh = filepath.Join(U.CurrentWorkFolder, "update", "/bin/rcovcfgsh")
+	U.LocalUpdHistory = filepath.Join(U.CurrentWorkFolder, "update", "/bin/updhistory.sh")
+	U.LocalUpdCheck = filepath.Join(U.CurrentWorkFolder, "update", "/bin/updatercheck.sh")
 
 	log.Info("[InitClient]The device is a x86 platform,init x86 info.")
 
@@ -373,20 +386,24 @@ func InitEnvironment(U *Update) error {
 	U.PkgTemp = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/pkg_tmp/")
 	U.Download = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/download/")
 	U.AutoBak = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/autobak/")
-	if err := InitDirectory(U.SingleUnpkg); err != nil {
-		return err
-	}
-	if err := InitDirectory(U.ComposeUnpkg); err != nil {
-		return err
-	}
-	if err := InitDirectory(U.PkgTemp); err != nil {
-		return err
-	}
-	if err := InitDirectory(U.Download); err != nil {
-		return err
-	}
-	if err := InitDirectory(U.AutoBak); err != nil {
-		return err
+
+	//如果没有从配置文件里找到已经解压了ssu包则要init
+	if U.SSUFolder != ""{
+		if err := InitDirectory(U.SingleUnpkg); err != nil {
+			return err
+		}
+		if err := InitDirectory(U.ComposeUnpkg); err != nil {
+			return err
+		}
+		if err := InitDirectory(U.PkgTemp); err != nil {
+			return err
+		}
+		if err := InitDirectory(U.Download); err != nil {
+			return err
+		}
+		if err := InitDirectory(U.AutoBak); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -431,32 +448,68 @@ func ReadMd5FromPackage(ssuPath string, start, end int64) (string, error) {
 
 //用于检查升级包是否为组合升级包，目前AD不是组合的
 //TODO:when encounter error,I think it should print error md5 and correct md5
-func ComposePackageMd5(ssuPath string) error {
+func ComposePackageMd5(ssuPath string) (string, error) {
 	ssuMd5, err := ReadMd5FromPackage(ssuPath, 8, 40)
 	if err != nil {
-		return err
+		return "", err
 	}
 	correctMd5 := Md5Sum(ssuPath, 48)
 	if ssuMd5 == correctMd5 {
-		return nil
+		return ssuMd5, nil
 	}
 	log.Warn("[ComposePackageMd5]compose package md5 don't match\n\tcorrectMd5:%s\n\terrorMd5:%s", correctMd5, ssuMd5)
-	return fmt.Errorf("[ComposePackageMd5]compose package md5 don't match\n\tcorrectMd5:%s\n\terrorMd5:%s", correctMd5, ssuMd5)
+	return "", fmt.Errorf("[ComposePackageMd5]compose package md5 don't match\n\tcorrectMd5:%s\n\terrorMd5:%s", correctMd5, ssuMd5)
 
 }
 
 //用于检查升级包是否为组合升级包，目前AD不是组合的
-func ComposePackage(ssuPath string) bool {
-	if ComposePackageMd5(ssuPath) == nil {
+func ComposePackage(ssuPath string) (string, bool) {
+	if md5, err := ComposePackageMd5(ssuPath); err == nil {
 		if filepath.Ext(ssuPath) == ".cssu" {
-			return true
+			return md5, true
 		} else {
 			log.Error("[ComposePackage]The package %s is a cssu file,but not have a .cssu extname.", ssuPath)
-			return false
+			return "", false
 		}
 	}
-	return false
+	return "", false
 
+}
+
+//如果在配置文件里找到此ssu包已经解压了，就不用再解压了
+//如果没有找到就准备写入配置文件(当然要解压好再写入)
+//如果超过了限制的就把最早解压的包删掉，也从配置文件里删掉
+func WriteMd5ToConf(md5, ssu string,u *Update) error {
+	value,err := ReadValueFromConf(u.appConf,"ssu",md5,appMutex)
+	if err != nil {return err}
+	num, err1 := strconv.Atoi(value)
+	if err1 != nil {return err1}
+	keys,err2 := FindAllKeyValue(u.appConf,"ssu",appMutex)
+	if err2 != nil {return err2}
+
+	//如果大于配置文件里设置的就删除第一个key,
+	//再在尾部插入
+	if len(keys) > num{
+		//TODO not done yet
+	}
+
+	if err := WriteMsgToConf(u.ssuConf, "ssu", md5, ssu, ssuMutex); err != nil {
+		return fmt.Errorf("[WriteMd5ToConf]wirte md5 to conf:%s, fail:%s", u.ssuConf, err)
+	}
+	return nil
+}
+
+func JudgeUnpack(md5 string, u *Update, m *sync.RWMutex)(string,error){
+	hash, err := FindAllKeyValue(u.ssuConf, "ssu", m)
+	if err != nil {
+		return "",err
+	}
+	value, err1 := CompareKeyFromMap(hash, md5)
+	if err1 != nil {
+		return "",err1
+	}
+
+	return value,nil
 }
 
 //TODO: not done yet
@@ -465,38 +518,36 @@ func InitComposePackageArr(ssuPath string) []string {
 	return nil
 }
 
-func SinglePackageMd5(ssuPath string) error {
+func SinglePackageMd5(ssuPath string) (string, error) {
 	ssuMd5, err := ReadMd5FromPackage(ssuPath, 0, 32)
 	if err != nil {
-		return err
+		return "", err
 	}
 	correctMd5 := Md5Sum(ssuPath, 33)
 	if ssuMd5 == correctMd5 {
-		return nil
+		return ssuMd5, nil
 	}
-	log.Error("[SinglePackageMd5]single package md5 don't match\n\tcorrectMd5:%s\n\terrorMd5:%s", correctMd5, ssuMd5)
-	return fmt.Errorf("[SinglePackageMd5]single package md5 don't match\n\tcorrectMd5:%s\n\terrorMd5:%s", correctMd5, ssuMd5)
+	log.Error("[SinglePackageMd5]single package md5 don't match\n\t\tcorrectMd5:%s\n\t\terrorMd5:%s", correctMd5, ssuMd5)
+	return "", fmt.Errorf("[SinglePackageMd5]single package md5 don't match\n\t\tcorrectMd5:%s\n\t\terrorMd5:%s", correctMd5, ssuMd5)
 
 }
 
-func PrepareUpgrade(S *Session, U *Update) error {
+func PrepareUpgrade(S *Session, U *Update) (md5 string, err error) {
 	log.Info("[PrepareUpgrade]init to upgrade or restore  the package:%s", U.SSUPackage)
 	if U.UpdatingFlag && (time.Now().Sub(U.UpdateTime) < UPD_TIMEOUT*time.Second) {
-		return fmt.Errorf("[PrepareUpgrade]now update the package:%s,begin at %v\n ....", U.SSUPackage, U.UpdateTime)
-	}
-	if err := InitEnvironment(U); err != nil {
-		return err
+		return "", fmt.Errorf("[PrepareUpgrade]now update the package:%s,begin at %v\n ....", U.SSUPackage, U.UpdateTime)
 	}
 	if err := FtpDownloadSSUPackage(U.SSUPackage, "admin", "admin"); err != nil {
-		return err
+		return "", err
 	}
 	if !IsPathExist(U.SSUPackage) {
-		return fmt.Errorf("can't find the SSU package,please check it\n")
+		return "", fmt.Errorf("can't find the SSU package,please check it\n")
 	}
 
-	if ComposePackage(U.SSUPackage) {
+	if md5, err = ComposePackage(U.SSUPackage); err == nil {
 		InitComposePackageArr(U.SSUPackage) //TODO: not done yet
-	} else if SinglePackageMd5(U.SSUPackage) == nil {
+		return md5,nil
+	} else if md5, err = SinglePackageMd5(U.SSUPackage); err == nil {
 		var ssuInfo SSUSlice
 		ssuInfo.SSUPacket = U.SSUPackage
 		ssuInfo.SSUType = PACKAGE_TYPE
@@ -504,8 +555,8 @@ func PrepareUpgrade(S *Session, U *Update) error {
 
 		U.SSUType = PACKAGE_TYPE //TODO: it will be abandoned
 		log.Info("[PrepareUpgrade]The package %s is a valid single package", U.SSUPackage)
-		return nil
+		return md5, nil
 	}
-	return fmt.Errorf("[PrepareUpgrade]The package %s is not a valid package,please check first. if your use a ftp path,please download it to local and try again.\n", U.SSUPackage)
+	return "", fmt.Errorf("[PrepareUpgrade]The package %s is not a valid package,please check first. if your use a ftp path,please download it to local and try again.\n", U.SSUPackage)
 
 }

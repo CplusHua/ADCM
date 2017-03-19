@@ -27,6 +27,8 @@ type SSU struct {
 type Unpack struct {
 	FolderPrefix      string //random string
 	CurrentWorkFolder string
+	SSUFolder	  string //解压之后的ssu目录
+
 	LocalBackSh       string
 	LocalPreCfgSh     string
 	LocalCfgSh        string
@@ -56,6 +58,8 @@ type Package struct {
 	UpdatingFlag  bool      //updating or not
 	UpdateTime    time.Time //when to update
 	RestoringFlag bool
+	ssuConf       string
+	appConf       string
 }
 
 type Cfg struct {

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 var log *logs.BeeLogger
@@ -395,12 +396,13 @@ func Upgrade(ip, port, password, ssu string) error {
 	if err := UpgradeCheck(S, U); err != nil {
 		return err
 	}
-
-	if err := PrepareUpgrade(S, U); err != nil {
+	var md5 string
+	md5, err = PrepareUpgrade(S, U)
+	if err != nil {
 		return err
 	}
 
-	if err := UnpackPackage(U); err != nil {
+	if err := UnpackPackage(md5,U); err != nil {
 		return err
 	}
 	apps := GetApps(U.SingleUnpkg)
@@ -427,7 +429,19 @@ func Upgrade(ip, port, password, ssu string) error {
 	log.Info("[Upgrade]Upgrade %s:%s sucess", ip, port)
 	return nil
 }
+/*
+type Info struct {
+	ssu string
+	password string
+}
+
+func AnalysisInfo(info map[string]Info,ips []string, ports []string, passwords []string, ssu []string)map[string]Info  {
+	for k,v := range ips {
+
+	}
+}
 
 func ThreadUpgrade(ip []string, port []string, passwd []string, ssu []string) {
-
+		info := make()
 }
+*/

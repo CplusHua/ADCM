@@ -5,12 +5,14 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/dutchcoders/goftp"
+	"github.com/go-ini/ini"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -111,7 +113,6 @@ var (
 	AUTOBAK_NUMS          = 10
 )
 
-
 func RandomString(length int) string {
 	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	bytes := []byte(str)
@@ -126,7 +127,7 @@ func RandomString(length int) string {
 func CurrentDirectory() string {
 	pwd, err := os.Getwd()
 	if err != nil {
-		log.Error("[CurrentDirectory]%s",err)
+		log.Error("[CurrentDirectory]%s", err)
 		return ""
 	}
 	return pwd
@@ -251,4 +252,53 @@ func EncFileByEnc(app, dst string) error {
 		return err
 	}
 	return nil
+}
+
+func WriteMsgToConf(conf, section, key, value string, m *sync.RWMutex) error {
+	m.Lock()
+	cfg, err := ini.Load(conf)
+	if err != nil {
+		return fmt.Errorf("[WriteMsgToConf]Load file: %s error:%s", conf, err)
+	}
+	if _, err := cfg.Section(section).NewKey(key, value); err != nil {
+		return fmt.Errorf("[WriteMsgToConf]create a new key:%s value:%s erorr:%s", key, value, err)
+	}
+	if err := cfg.SaveTo(conf); err != nil {
+		return fmt.Errorf("[WriteMsgToConf] save to file: %s error :%s", conf, err)
+	}
+	defer m.Unlock()
+	return nil
+}
+
+func FindAllKeyValue(conf, section string, m *sync.RWMutex) (map[string]string, error) {
+	m.RLock()
+	cfg, err := ini.Load(conf)
+	if err != nil {
+		return nil, fmt.Errorf("[FindAllKeyValule]Load file: %s error:%s", conf, err)
+	}
+	sec, err := cfg.GetSection(section)
+	if err != nil {
+		return nil, fmt.Errorf("[FindAllKeyValule]get section: %s all key and value error:%s", section, err)
+	}
+	defer m.RUnlock()
+	return sec.KeysHash(), nil
+}
+
+func CompareKeyFromMap(hash map[string]string,key string)(string,error)  {
+	for k, v := range hash{
+		if key == k {
+			return v, nil
+		}
+	}
+	return "",fmt.Errorf("[CompareKeyFromMap]can't find key:%s",key)
+}
+
+func ReadValueFromConf(conf,section,key string, m *sync.RWMutex)(string, error){
+	m.RLock()
+	cfg, err := ini.Load(conf)
+	if err != nil {
+		return fmt.Errorf("[ReadValueFromConf]read key:%s from conf:%s,error:%s",key,conf,err)
+	}
+	defer m.RUnlock()
+	return cfg.Section(section).Key(key).String(),nil
 }
