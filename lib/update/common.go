@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"path/filepath"
 )
 
 /*
@@ -297,8 +298,12 @@ func ReadValueFromConf(conf,section,key string, m *sync.RWMutex)(string, error){
 	m.RLock()
 	cfg, err := ini.Load(conf)
 	if err != nil {
-		return fmt.Errorf("[ReadValueFromConf]read key:%s from conf:%s,error:%s",key,conf,err)
+		return "",fmt.Errorf("[ReadValueFromConf]read key:%s from conf:%s,error:%s",key,conf,err)
 	}
 	defer m.RUnlock()
 	return cfg.Section(section).Key(key).String(),nil
+}
+
+func SSUPath(path string) string {
+	return strings.Replace(filepath.Base(path),filepath.Ext(path),"",-1)
 }

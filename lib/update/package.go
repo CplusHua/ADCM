@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"strconv"
 )
 
 var Flag uint16
@@ -130,22 +130,46 @@ func unpack(packPath, destPath, unpackTool, logFile string) error {
 
 }
 
-func unpackPackage(md5 string,U *Update) error {
+func unpackPackage(md5 string, U *Update) error {
 	// function InitEnvironment has been init the path U.SingleUnpkg
-	log.Info("[UnpackPackage]begin to unpack the package")
-	logFile := filepath.Join(CurrentDirectory(), U.FolderPrefix, "7z.log")
-	if err := unpack(U.SSUPackage, U.SingleUnpkg, "7za", logFile);err != nil {
+
+	ssuPath, err := JudgeUnpack(md5, U)
+	if err == nil {
+		log.Info("[unpackPackage]find %s in ssu.conf", md5)
+		log.Info("[unpackPackage]don't need to unpack ssu package:%s",U.SSUPackage)
+		U.SSUFolder = SSUPath(ssuPath)
+		log.Info("[unpackPackage]SSUFolder is %s",U.SSUFolder)
+		return InitEnvironment(U,true)
+	}
+	//因为要解压,每个包解压存放的目录就以包的名字来命令
+	U.SSUFolder = SSUPath(U.SSUPackage)
+	log.Info("[unpackPackage]SSUFolder is %s",U.SSUFolder)
+	if err := InitEnvironment(U,false); err != nil {
 		return err
 	}
-	WriteMd5ToConf(md5,)
-	if err := InitEnvironment(U); err != nil {
-		return "", err
+
+	log.Info("[UnpackPackage]begin to unpack the package")
+	logFile := filepath.Join(CurrentDirectory(), U.FolderPrefix, U.SSUFolder, "7z.log")
+	if err := unpack(U.SSUPackage, U.SingleUnpkg, "7za", logFile); err != nil {
+		return err
 	}
+
+	apps := GetApps(U.SingleUnpkg)
+	for _, v := range apps {
+		if err := EncFile(v, v+"_des"); err != nil {
+			return err
+		}
+	}
+
+	if err := WriteMd5ToConf(md5, U.SSUPackage, U); err != nil {
+		return err
+	}
+	return nil
 }
 
 func UnpackPackage(md5 string, U *Update) error {
 	if U.SSUType == PACKAGE_TYPE || U.SSUType == RESTORE_TYPE {
-		return unpackPackage(md5,U)
+		return unpackPackage(md5, U)
 	}
 	return fmt.Errorf("[UnpackPackage]Package type %d is not support", U.SSUType)
 }
@@ -379,16 +403,16 @@ func InitClient(appVersion string) *Update {
 	return U
 }
 
-func InitEnvironment(U *Update) error {
+func InitEnvironment(U *Update,flag bool) error {
 	log.Info("[InitEnvironment]now init enviroment for update or restore")
-	U.SingleUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/unpkg/")
-	U.ComposeUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/compose_unpkg/")
-	U.PkgTemp = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/pkg_tmp/")
-	U.Download = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/download/")
-	U.AutoBak = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, "/autobak/")
+	U.SingleUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/unpkg/")
+	U.ComposeUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/compose_unpkg/")
+	U.PkgTemp = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/pkg_tmp/")
+	U.Download = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/download/")
+	U.AutoBak = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/autobak/")
 
 	//如果没有从配置文件里找到已经解压了ssu包则要init
-	if U.SSUFolder != ""{
+	if !flag {
 		if err := InitDirectory(U.SingleUnpkg); err != nil {
 			return err
 		}
@@ -405,6 +429,7 @@ func InitEnvironment(U *Update) error {
 			return err
 		}
 	}
+	log.Warn("[InitEnvironment]U.singleUnpkg is %s",U.SingleUnpkg)
 
 	return nil
 }
@@ -479,17 +504,24 @@ func ComposePackage(ssuPath string) (string, bool) {
 //如果在配置文件里找到此ssu包已经解压了，就不用再解压了
 //如果没有找到就准备写入配置文件(当然要解压好再写入)
 //如果超过了限制的就把最早解压的包删掉，也从配置文件里删掉
-func WriteMd5ToConf(md5, ssu string,u *Update) error {
-	value,err := ReadValueFromConf(u.appConf,"ssu",md5,appMutex)
-	if err != nil {return err}
+func WriteMd5ToConf(md5, ssu string, u *Update) error {
+	value, err := ReadValueFromConf(u.appConf, "ssu", "ssunum", appMutex)
+	if err != nil {
+		return err
+	}
 	num, err1 := strconv.Atoi(value)
-	if err1 != nil {return err1}
-	keys,err2 := FindAllKeyValue(u.appConf,"ssu",appMutex)
-	if err2 != nil {return err2}
+	log.Info("[WriteMd5ToConf]app.conf show ssunum is %d",num)
+	if err1 != nil {
+		return err1
+	}
+	keys, err2 := FindAllKeyValue(u.appConf, "ssu", appMutex)
+	if err2 != nil {
+		return err2
+	}
 
 	//如果大于配置文件里设置的就删除第一个key,
 	//再在尾部插入
-	if len(keys) > num{
+	if len(keys) > num {
 		//TODO not done yet
 	}
 
@@ -499,17 +531,17 @@ func WriteMd5ToConf(md5, ssu string,u *Update) error {
 	return nil
 }
 
-func JudgeUnpack(md5 string, u *Update, m *sync.RWMutex)(string,error){
-	hash, err := FindAllKeyValue(u.ssuConf, "ssu", m)
+func JudgeUnpack(md5 string, u *Update) (string, error) {
+	hash, err := FindAllKeyValue(u.ssuConf, "ssu", ssuMutex)
 	if err != nil {
-		return "",err
+		return "", err
 	}
 	value, err1 := CompareKeyFromMap(hash, md5)
 	if err1 != nil {
-		return "",err1
+		return "", err1
 	}
 
-	return value,nil
+	return value, nil
 }
 
 //TODO: not done yet
@@ -532,7 +564,7 @@ func SinglePackageMd5(ssuPath string) (string, error) {
 
 }
 
-func PrepareUpgrade(S *Session, U *Update) (md5 string, err error) {
+func PrepareUpgrade(S *Session, U *Update) (string, error) {
 	log.Info("[PrepareUpgrade]init to upgrade or restore  the package:%s", U.SSUPackage)
 	if U.UpdatingFlag && (time.Now().Sub(U.UpdateTime) < UPD_TIMEOUT*time.Second) {
 		return "", fmt.Errorf("[PrepareUpgrade]now update the package:%s,begin at %v\n ....", U.SSUPackage, U.UpdateTime)
@@ -544,10 +576,10 @@ func PrepareUpgrade(S *Session, U *Update) (md5 string, err error) {
 		return "", fmt.Errorf("can't find the SSU package,please check it\n")
 	}
 
-	if md5, err = ComposePackage(U.SSUPackage); err == nil {
+	if md5, err := ComposePackage(U.SSUPackage); err == true {
 		InitComposePackageArr(U.SSUPackage) //TODO: not done yet
-		return md5,nil
-	} else if md5, err = SinglePackageMd5(U.SSUPackage); err == nil {
+		return md5, nil
+	} else if md5, err := SinglePackageMd5(U.SSUPackage); err == nil {
 		var ssuInfo SSUSlice
 		ssuInfo.SSUPacket = U.SSUPackage
 		ssuInfo.SSUType = PACKAGE_TYPE

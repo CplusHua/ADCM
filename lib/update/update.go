@@ -11,13 +11,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 var log *logs.BeeLogger
 
 func init() {
-	log = logs.NewLogger(10)
+	log = logs.NewLogger(5)
 	log.EnableFuncCallDepth(true)
 	log.SetLogFuncCallDepth(5)
 }
@@ -404,12 +403,6 @@ func Upgrade(ip, port, password, ssu string) error {
 
 	if err := UnpackPackage(md5,U); err != nil {
 		return err
-	}
-	apps := GetApps(U.SingleUnpkg)
-	for _, v := range apps {
-		if err := EncFile(v, v+"_des"); err != nil {
-			return err
-		}
 	}
 
 	if err := ThreadUpdateAllPackages(S, U); err != nil {
