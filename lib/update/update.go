@@ -433,8 +433,10 @@ func AnalysisInfo(info map[string]Info,ips []string, ports []string, passwords [
 
 	}
 }
-
-func ThreadUpgrade(ip []string, port []string, passwd []string, ssu []string) {
-		info := make()
-}
 */
+
+func ThreadUpgrade(ips []string, port string, passwords string, ssu string) {
+	for _, ip := range ips {
+		go Upgrade(ip,port,passwords,ssu)
+	}
+}
