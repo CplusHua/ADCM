@@ -15,6 +15,7 @@ import (
 
 var log *logs.BeeLogger
 
+//设置一些日志的参数,如开启打印调用者信息
 func init() {
 	log = logs.NewLogger(5)
 	log.EnableFuncCallDepth(true)
@@ -22,19 +23,23 @@ func init() {
 }
 
 //if S.data contains string "result:1",it means command executed fail by AD
+//传进的data如果不包含result:1就表示执行命令成功,否则失败
 func IsResultOK(data string) bool {
 	return !strings.Contains(data, "result:1")
 }
 
+//判断与服务端交互是否已经结束,如果包含getover就表示已经结束
 func IsGetOver(data string) bool {
 	return strings.Contains(data, CMD[GETOVER])
 }
-
-func QueryVersion(data string) bool {
+//判断服务端返回的内容是否需要查询客户端的版本,如果是,
+// 则客户端需求把客户的版本发给服务端
+func IsQueryVersion(data string) bool {
 	return strings.Contains(data, "result:7629414")
 }
 
 // Get the Server Version(updateme program version)
+//获取服务端服务程序的版本
 func VersionResult(S *Session) {
 	reg := regexp.MustCompile(`version:[\d]+`)
 	str := reg.FindAllString(string(S.data), -1)[0]
@@ -42,14 +47,21 @@ func VersionResult(S *Session) {
 }
 
 //Get AD Version
+//获取服务端的设备的版本
 func GetAppVersion(S *Session, appVersion string) {
 	log.Debug("[GetAppVersion]appversion:\n%s", appVersion)
+	//版本格式
+	/*
+	　	SANGFOR-M5100-AD-6.6
+		Build20170302
+	 */
 	reg := regexp.MustCompile(`[\w]+-[\w]+\.[\w]+`)
-	str := reg.FindAllString(appVersion, -1)[0]
-	S.AppVersion = strings.Split(str, "-")[1]
+	str := reg.FindAllString(appVersion, -1)[0]  //获取到是AD-6.6
+	S.AppVersion = strings.Split(str, "-")[1]  //获取到是6.6
 	log.Info("[GetAppVersion]The first line of appversion of the current device is:", S.AppVersion)
 }
 
+//判断设备的CPU是否为arm
 func IsArmChip(appVersion string) bool {
 	str := strings.ToLower(appVersion)
 	if strings.Contains(str, "-ac-") || strings.Contains(str, "sinfor-m") || strings.Contains(str, "-ad-") {
@@ -80,7 +92,7 @@ func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 			return "", fmt.Errorf("[Get]OpenFile %s fail:%s", LocalFile, err)
 		}
 		defer file.Close()
-		bufW := bufio.NewWriter(file)
+		bufW := bufio.NewWriter(file)  //bufW默认的字节数是4096,已经足够
 		if err := S.ReadPacket(); err != nil {
 			log.Error("[Get]Get data error:%s", err)
 			log.Error("[Get]Get data is :%s", string(S.data))
@@ -105,7 +117,7 @@ func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 			return "", fmt.Errorf("[Get]Not found getover flag while get the file:%s\n", RemoteFile)
 		}
 
-	} else {
+	} else { //如果不是存在本地文件就直接把结果返回
 		if err := S.ReadPacket(); err != nil {
 			log.Error("[Get]Get data error:%s", err)
 			log.Error("[Get]Get data is :%s", string(S.data))
@@ -113,7 +125,7 @@ func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 		}
 		var allData []byte
 		for S.typ == DATAFRAME {
-			allData = append(allData, S.data...)
+			allData = append(allData, S.data...) //这样拼接效率并不高, //TODO
 			if err := S.ReadPacket(); err != nil {
 				log.Error("[Get]ReadPacket error:%s", err)
 				return "", fmt.Errorf("[Get]ReadPacket error:%s", err)
@@ -263,7 +275,7 @@ func Login(ip, port, passwd string) (*Session, error) {
 	if DoCmd(S, CMD[LOGIN], passwd) != nil {
 		return nil, fmt.Errorf("[Login]Login fail,please check the passwd\n")
 	}
-	if QueryVersion(string(S.data)) {
+	if IsQueryVersion(string(S.data)) {
 		if DoCmd(S, CMD[VERSION], "") != nil {
 			return nil, fmt.Errorf("[Login]DoCmd %s fail\n", CMD[VERSION])
 		}
@@ -352,9 +364,7 @@ func UpdateUpgradeHistory(S *Session, U *Update) error {
 	log.Info("[UpdateUpgradeHistory]update Upgrade History success")
 	return nil
 }
-
-//TODO: ini format file
-//TODO: now
+//从package.conf读取判断是否升级之后重启
 func ConfirmRebootDevice(S *Session, U *Update) error {
 	log.Info("[ConfirmRebootDevice]begin to Confirm Reboot Device")
 	cfg, err := ini.Load(filepath.Join(U.SingleUnpkg, "package.conf"))
