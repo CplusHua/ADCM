@@ -27,23 +27,23 @@ type SSU struct {
 type Unpack struct {
 	FolderPrefix      string //random string
 	CurrentWorkFolder string
-	SSUFolder	  string //解压之后的ssu目录
+	SSUFolder         string //解压之后的ssu目录
 
-	LocalBackSh       string
-	LocalPreCfgSh     string
-	LocalCfgSh        string
-	LocalUpdHistory   string
-	LocalUpdCheck     string
-	ServerAppRe       string
-	ServerAppSh       string
-	ServerCfgPre      string
-	ServerCfgSh       string
-	TempExecFile      string
-	TempRstFile       string
-	TempRetFile       string
-	CustomErrFile     string
-	LoginPwdFile      string
-	Compose           string
+	LocalBackSh     string
+	LocalPreCfgSh   string
+	LocalCfgSh      string
+	LocalUpdHistory string
+	LocalUpdCheck   string
+	ServerAppRe     string
+	ServerAppSh     string
+	ServerCfgPre    string
+	ServerCfgSh     string
+	TempExecFile    string
+	TempRstFile     string
+	TempRetFile     string
+	CustomErrFile   string
+	LoginPwdFile    string
+	Compose         string
 
 	SingleUnpkg  string
 	ComposeUnpkg string
@@ -174,7 +174,7 @@ func (S *Session) ReadPacket() error {
 		return fmt.Errorf("[ReadPacket]Sec Data Type wrong:%d", secDataType)
 	}
 
-	realDataLen := uint16(len(decSecData[secDataHeader.pos:]))
+	realDataLen := uint16(len(decSecData[secDataHeader.Pos():]))
 	if dataLen != realDataLen {
 		log.Error("[ReadPacket]Read Sec Data len %d is not equal need Read Sec Data len %d", realDataLen, dataLen)
 		return fmt.Errorf("[ReadPacket]Read Sec Data len %d is not equal need Read Sec Data len %d", realDataLen, dataLen)
@@ -182,7 +182,7 @@ func (S *Session) ReadPacket() error {
 
 	S.typ = secDataType
 	S.length = secDataLen
-	S.data = secDataHeader.buff[secDataHeader.pos:]
+	S.data = secDataHeader.DataSelect(secDataHeader.Pos(), secDataHeader.Size())
 	return nil
 }
 

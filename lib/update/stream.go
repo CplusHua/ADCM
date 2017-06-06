@@ -8,10 +8,6 @@ import (
 var ErrBuffOverflow = fmt.Errorf("DSProtocol: buff is too small to io")
 
 type ReadStream interface {
-	Size() int
-	Left() int
-	Reset([]byte)
-	Data() []byte
 	ReadByte() (b byte, err error)
 	ReadUint16() (b uint16, err error)
 	ReadUint32() (b uint32, err error)
@@ -21,15 +17,25 @@ type ReadStream interface {
 }
 
 type WriteStream interface {
-	Size() int
-	Left() int
-	Reset([]byte)
-	Data() []byte
 	WriteByte(b byte) error
 	WriteUint16(b uint16) error
 	WriteUint32(b uint32) error
 	WriteUint64(b uint64) error
 	WriteBuff(b []byte) error
+}
+type CommonStream interface {
+	Pos() int
+	Size() int
+	Left() int
+	Reset([]byte)
+	Data() []byte
+	DataSelect(from, to int) []byte
+}
+
+type Stream interface {
+	ReadStream
+	WriteStream
+	CommonStream
 }
 
 //BigEndianStream
@@ -44,21 +50,30 @@ type LEStream struct {
 	buff []byte
 }
 
-func NewBEStream(buff []byte) *BEStream {
+func NewBEStream(buff []byte) Stream {
 	return &BEStream{
 		buff: buff,
 	}
 }
 
-func NewLEStream(buff []byte) *LEStream {
+func NewLEStream(buff []byte) Stream {
 	return &LEStream{
 		buff: buff,
 	}
 }
 
+func (impl *BEStream) Pos() int { return impl.pos }
+
 func (impl *BEStream) Size() int { return len(impl.buff) }
 
-func (impl *BEStream) Data() []byte { return impl.buff }
+func (impl *BEStream) Data() []byte { return impl.buff[:impl.pos] }
+
+func (impl *BEStream) DataSelect(from, to int) []byte {
+	if from < 0 || to < 0 || to > impl.pos || from > impl.pos {
+		panic("out of index")
+	}
+	return impl.buff[from:to]
+}
 
 func (impl *BEStream) Left() int { return len(impl.buff) - impl.pos }
 
@@ -162,10 +177,18 @@ func (impl *BEStream) WriteBuff(buff []byte) error {
 	impl.pos += len(buff)
 	return nil
 }
+func (impl *LEStream) Pos() int { return impl.pos }
 
 func (impl *LEStream) Size() int { return len(impl.buff) }
 
-func (impl *LEStream) Data() []byte { return impl.buff }
+func (impl *LEStream) Data() []byte { return impl.buff[:impl.pos] }
+
+func (impl *LEStream) DataSelect(from, to int) []byte {
+	if from < 0 || to < 0 || to > impl.pos || from > impl.pos {
+		panic("out of index")
+	}
+	return impl.buff[from:to]
+}
 
 func (impl *LEStream) Left() int { return len(impl.buff) - impl.pos }
 

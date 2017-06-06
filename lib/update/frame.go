@@ -109,7 +109,7 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 		return nil, err
 	}
 
-	secLength := EncLen(sec.pos)
+	secLength := EncLen(sec.Pos())
 	frameBuff := make([]byte, secLength+FRAME_HEADER_LEN)
 	frame := NewLEStream(frameBuff)
 	frame.WriteUint16(FRAMEFLAG)
@@ -118,7 +118,7 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 	tempBuff := make([]byte, secLength+FRAME_HEADER_LEN)
 	//function Encrypt will combine secData and FrameData
 
-	buf, err = Encrypt(sec.buff[:sec.pos], tempBuff)
+	buf, err = Encrypt(sec.Data(), tempBuff)
 	if err != nil {
 		return nil, err
 	}
@@ -126,5 +126,5 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return frame.buff[:frame.pos], nil
+	return frame.Data(), nil
 }
