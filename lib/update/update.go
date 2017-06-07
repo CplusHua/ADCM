@@ -447,6 +447,8 @@ func AnalysisInfo(info map[string]Info,ips []string, ports []string, passwords [
 
 func ThreadUpgrade(ips []string, port string, passwords string, ssu string) {
 	for _, ip := range ips {
-		go Upgrade(ip,port,passwords,ssu)
+		 if err := Upgrade(ip,port,passwords,ssu);err != nil {
+			fmt.Println("error:",err)
+		 }
 	}
 }

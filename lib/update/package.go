@@ -536,6 +536,7 @@ func JudgeUnpack(md5 string, u *Update) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//如果在配置文件里找到了与md5相同的key那么就表示已经解压过此ssu包了
 	value, err1 := CompareKeyFromMap(hash, md5)
 	if err1 != nil {
 		return "", err1

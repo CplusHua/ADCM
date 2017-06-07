@@ -69,7 +69,7 @@ func (impl *BEStream) Size() int { return len(impl.buff) }
 func (impl *BEStream) Data() []byte { return impl.buff[:impl.pos] }
 
 func (impl *BEStream) DataSelect(from, to int) []byte {
-	if from < 0 || to < 0 || to > impl.pos || from > impl.pos {
+	if from < 0 || to < 0 || to > len(impl.buff) || from > len(impl.buff) {
 		panic("out of index")
 	}
 	return impl.buff[from:to]
@@ -184,7 +184,7 @@ func (impl *LEStream) Size() int { return len(impl.buff) }
 func (impl *LEStream) Data() []byte { return impl.buff[:impl.pos] }
 
 func (impl *LEStream) DataSelect(from, to int) []byte {
-	if from < 0 || to < 0 || to > impl.pos || from > impl.pos {
+	if from < 0 || to < 0 || to > len(impl.buff) || from > len(impl.buff) {
 		panic("out of index")
 	}
 	return impl.buff[from:to]

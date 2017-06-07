@@ -1,33 +1,41 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/nicle-lin/ADCM/lib/update"
 	"os"
-	//"fmt"
+	"runtime"
 	"strings"
 )
 
-func main() {
+var usage = `Usage: upgrade [ip] [port] [password] [ssu]`
 
-	/*
-	if err := update.Upgrade(os.Args[1],"51111","admin",os.Args[2]);err != nil{
-		fmt.Println("err:",err)
-	}else {
-		fmt.Println("success")
+func main() {
+	flag.Usage = func() {
+		fmt.Fprint(os.Stderr, fmt.Sprintf(usage, runtime.NumCPU()))
 	}
-	*/
+	flag.Parse()
+	if flag.NArg() < 4 {
+		usageAndExit("")
+	}
+
 	ips := os.Args[1]
 	ip := strings.Fields(ips)
-	update.ThreadUpgrade(ip,"51111","admin",os.Args[2])
+	port := os.Args[2]
+	password := os.Args[3]
+	ssu := os.Args[4]
+	fmt.Println(ip,port,password,ssu)
+	update.ThreadUpgrade(ip, port, password, ssu)
 
-	/*
-	fmt.Println(ip[0])
-	fmt.Println(ip[1])
-	*/
-	/*
-	err := update.PutFile(os.Args[1],"51111","admin",os.Args[2],os.Args[3])
-	if err != nil {
-		logs.Error(err)
+}
+
+func usageAndExit(msg string) {
+	if msg != "" {
+		fmt.Fprintf(os.Stderr, msg)
+		fmt.Fprintf(os.Stderr, "\n\n")
 	}
-	*/
+	flag.Usage()
+	fmt.Fprintf(os.Stderr, "\n")
+	os.Exit(1)
 }
