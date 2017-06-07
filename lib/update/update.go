@@ -32,6 +32,7 @@ func IsResultOK(data string) bool {
 func IsGetOver(data string) bool {
 	return strings.Contains(data, CMD[GETOVER])
 }
+
 //判断服务端返回的内容是否需要查询客户端的版本,如果是,
 // 则客户端需求把客户的版本发给服务端
 func IsQueryVersion(data string) bool {
@@ -40,7 +41,7 @@ func IsQueryVersion(data string) bool {
 
 // Get the Server Version(updateme program version)
 //获取服务端服务程序的版本
-func VersionResult(S *Session) {
+func VersionResult(S *session) {
 	reg := regexp.MustCompile(`version:[\d]+`)
 	str := reg.FindAllString(string(S.data), -1)[0]
 	S.SerVersion = strings.Split(str, ":")[1]
@@ -48,16 +49,16 @@ func VersionResult(S *Session) {
 
 //Get AD Version
 //获取服务端的设备的版本
-func GetAppVersion(S *Session, appVersion string) {
+func GetAppVersion(S *session, appVersion string) {
 	log.Debug("[GetAppVersion]appversion:\n%s", appVersion)
 	//版本格式
 	/*
-	　	SANGFOR-M5100-AD-6.6
-		Build20170302
-	 */
+		　	SANGFOR-M5100-AD-6.6
+			Build20170302
+	*/
 	reg := regexp.MustCompile(`[\w]+-[\w]+\.[\w]+`)
-	str := reg.FindAllString(appVersion, -1)[0]  //获取到是AD-6.6
-	S.AppVersion = strings.Split(str, "-")[1]  //获取到是6.6
+	str := reg.FindAllString(appVersion, -1)[0] //获取到是AD-6.6
+	S.AppVersion = strings.Split(str, "-")[1]   //获取到是6.6
 	log.Info("[GetAppVersion]The first line of appversion of the current device is:", S.AppVersion)
 }
 
@@ -81,7 +82,7 @@ func IsArmChip(appVersion string) bool {
 }
 
 //Get file from Server, and download,write it to the LocalFile
-func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
+func Get(S *session, RemoteFile, LocalFile string) (string, error) {
 	if err := DoCmd(S, CMD[GET], RemoteFile); err != nil {
 		return "", fmt.Errorf("[Get]the server can't send the file:%s.check the file exists,err msg:%s", RemoteFile, err)
 	}
@@ -92,7 +93,7 @@ func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 			return "", fmt.Errorf("[Get]OpenFile %s fail:%s", LocalFile, err)
 		}
 		defer file.Close()
-		bufW := bufio.NewWriter(file)  //bufW默认的字节数是4096,已经足够
+		bufW := bufio.NewWriter(file) //bufW默认的字节数是4096,已经足够
 		if err := S.ReadPacket(); err != nil {
 			log.Error("[Get]Get data error:%s", err)
 			log.Error("[Get]Get data is :%s", string(S.data))
@@ -146,7 +147,7 @@ func Get(S *Session, RemoteFile, LocalFile string) (string, error) {
 
 //return true,it mean command execute success by peer
 //return false, it mean command execute fail by peer
-func DoCmd(S *Session, cmdType, params string) error {
+func DoCmd(S *session, cmdType, params string) error {
 	cmdStr, err := MakeCmdPacket(cmdType, params)
 	if err != nil {
 		return fmt.Errorf("[DoCmd]MakeCmdPacket error:%v", err)
@@ -172,7 +173,7 @@ func DoCmd(S *Session, cmdType, params string) error {
 
 }
 
-func Exec(S *Session, U *Update, Command string) (string, error) {
+func Exec(S *session, U *Update, Command string) (string, error) {
 	doRet := DoCmd(S, CMD[EXEC], Command)
 	getReturn, err := Get(S, U.TempRetFile, "")
 	if err != nil {
@@ -193,7 +194,7 @@ func Exec(S *Session, U *Update, Command string) (string, error) {
 	return getResult, nil
 }
 
-func Put(S *Session, LocalFile, RemoteFile string) error {
+func Put(S *session, LocalFile, RemoteFile string) error {
 	log.Info("[Put]put %s to %s is starting", LocalFile, RemoteFile)
 	if !IsPathExist(LocalFile) {
 		log.Error("[Put] %s don't exist", LocalFile)
@@ -262,11 +263,9 @@ func GetFile(ip, passwd, port, LocalFile, RemoteFile string) error {
 	return err
 }
 
-func NewSession(conn net.Conn) *Session {
-	return &Session{Conn: conn, PeerInfo: &PeerInfo{}, SecData: &SecData{}}
-}
 
-func Login(ip, port, passwd string) (*Session, error) {
+
+func Login(ip, port, passwd string) (*session, error) {
 	conn, err := net.Dial("tcp4", ip+":"+port)
 	if err != nil {
 		return nil, err
@@ -288,11 +287,11 @@ func Login(ip, port, passwd string) (*Session, error) {
 	return S, nil
 }
 
-func Logout(S *Session) error {
+func Logout(S *session) error {
 	return S.Conn.Close()
 }
 
-func UpgradeCheck(S *Session, U *Update) error {
+func UpgradeCheck(S *session, U *Update) error {
 	msg, err := Exec(S, U, "ls "+UPDATE_CHECK_SCRIPT)
 	if err != nil {
 		log.Warn("[UpgradeCheck]exec ls %s fail,msg:%s\n error msg:%s", UPDATE_CHECK_SCRIPT, msg, err)
@@ -319,7 +318,7 @@ func UpgradeCheck(S *Session, U *Update) error {
 }
 
 //TODO only support to update single package right now
-func ThreadUpdateAllPackages(S *Session, U *Update) error {
+func ThreadUpdateAllPackages(S *session, U *Update) error {
 	switch U.SSUType {
 	case PACKAGE_TYPE:
 		if err := UpdateSinglePacket(S, U); err != nil {
@@ -343,7 +342,7 @@ func ThreadUpdateAllPackages(S *Session, U *Update) error {
 	return nil
 }
 
-func UpdateUpgradeHistory(S *Session, U *Update) error {
+func UpdateUpgradeHistory(S *session, U *Update) error {
 	log.Info("[UpdateUpgradeHistory]begin to update Upgrade History")
 	msg, err := Exec(S, U, "ls "+UPDHISTORY_SCRIPT)
 	if err != nil {
@@ -364,8 +363,9 @@ func UpdateUpgradeHistory(S *Session, U *Update) error {
 	log.Info("[UpdateUpgradeHistory]update Upgrade History success")
 	return nil
 }
+
 //从package.conf读取判断是否升级之后重启
-func ConfirmRebootDevice(S *Session, U *Update) error {
+func ConfirmRebootDevice(S *session, U *Update) error {
 	log.Info("[ConfirmRebootDevice]begin to Confirm Reboot Device")
 	cfg, err := ini.Load(filepath.Join(U.SingleUnpkg, "package.conf"))
 	if err != nil {
@@ -411,7 +411,7 @@ func Upgrade(ip, port, password, ssu string) error {
 		return err
 	}
 
-	if err := UnpackPackage(md5,U); err != nil {
+	if err := UnpackPackage(md5, U); err != nil {
 		return err
 	}
 
@@ -432,6 +432,7 @@ func Upgrade(ip, port, password, ssu string) error {
 	log.Info("[Upgrade]Upgrade %s:%s sucess", ip, port)
 	return nil
 }
+
 /*
 type Info struct {
 	ssu string
@@ -447,8 +448,8 @@ func AnalysisInfo(info map[string]Info,ips []string, ports []string, passwords [
 
 func ThreadUpgrade(ips []string, port string, passwords string, ssu string) {
 	for _, ip := range ips {
-		 if err := Upgrade(ip,port,passwords,ssu);err != nil {
-			fmt.Println("error:",err)
-		 }
+		if err := Upgrade(ip, port, passwords, ssu); err != nil {
+			fmt.Println("error:", err)
+		}
 	}
 }

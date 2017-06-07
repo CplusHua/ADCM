@@ -25,7 +25,7 @@ func main() {
 	port := os.Args[2]
 	password := os.Args[3]
 	ssu := os.Args[4]
-	fmt.Println(ip,port,password,ssu)
+	fmt.Println(ip, port, password, ssu)
 	update.ThreadUpgrade(ip, port, password, ssu)
 
 }

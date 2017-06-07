@@ -34,22 +34,8 @@ var CMD = [MaxCmdLen]string{
 	VERSION: "version",
 }
 
-type SecData struct {
-	length uint16
-	typ    byte
-	data   []byte
-}
-
-func (Sec *SecData) DataFrame() bool { return Sec.typ == DATAFRAME }
-func (Sec *SecData) CmdFrame() bool  { return Sec.typ == CMDFRAME }
-
-type params struct {
-	param1 string
-	param2 string
-}
-
 //命令格式组合
-func JoinCmd(cmd string, params []params) []byte {
+func joinCmd(cmd string, params []params) []byte {
 	var b []byte
 	b = append(b, []byte(cmd)...)
 	b = append(b, []byte("\n")...)
@@ -64,40 +50,31 @@ func JoinCmd(cmd string, params []params) []byte {
 	return b[:length]
 }
 
-func MakeCmdStr(cmdType, command string) []byte {
+func makeCmdStr(cmdType, command string) []byte {
 	switch cmdType {
 	case CMD[LOGIN]:
-		return JoinCmd(CMD[LOGIN], []params{{"passwd", command}, {"flage", "HandleVersion"}})
+		return joinCmd(CMD[LOGIN], []params{{"passwd", command}, {"flage", "HandleVersion"}})
 	case CMD[EXEC]:
-		return JoinCmd(CMD[EXEC], []params{{"cmd", command}})
+		return joinCmd(CMD[EXEC], []params{{"cmd", command}})
 	case CMD[GET]:
-		return JoinCmd(CMD[GET], []params{{"file", command}})
+		return joinCmd(CMD[GET], []params{{"file", command}})
 	case CMD[PUT]:
-		return JoinCmd(CMD[PUT], []params{{"file", command}})
+		return joinCmd(CMD[PUT], []params{{"file", command}})
 	case CMD[PUTOVER]:
-		return JoinCmd(CMD[PUTOVER], []params{})
+		return joinCmd(CMD[PUTOVER], []params{})
 	case CMD[VERSION]:
-		return JoinCmd(CMD[VERSION], []params{{"value", "1280"}})
+		return joinCmd(CMD[VERSION], []params{{"value", "1280"}})
 	default:
 		return nil
 	}
 
 }
 
-func MakeCmdPacket(cmdType string, params string) ([]byte, error) {
-	cmdByte := MakeCmdStr(cmdType, params)
-	return BuildFrame(CMDFRAME, cmdByte)
-}
-
-func MakeDataPacket(content []byte) ([]byte, error) {
-	return BuildFrame(DATAFRAME, content)
-}
-
 /*        1 byte      1 byte   　2 byte    1byte       1 byte      2byte  1 byte  less than 1024 byte
  * 格式:[FRAMEFLAG0][FRAMEFLAG0][length]([FRAMEFLAG0][FRAMEFLAG0][length][flag][data........])
  *      前两2个是协议开头标志　　后面数据字节数　　　括号里是加密的数据　flag表示是数据还是命令　data为真实数据
  */
-func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
+func buildFrame(flag byte, content []byte) (buf []byte, err error) {
 	contentLength := len(content)
 	secBuff := make([]byte, contentLength+SECDATA_HEADER_LEN)
 	sec := NewLEStream(secBuff)
@@ -127,4 +104,18 @@ func BuildFrame(flag byte, content []byte) (buf []byte, err error) {
 		return nil, err
 	}
 	return frame.Data(), nil
+}
+
+func MakeCmdPacket(cmdType string, params string) ([]byte, error) {
+	cmdByte := makeCmdStr(cmdType, params)
+	return buildFrame(CMDFRAME, cmdByte)
+}
+
+func MakeDataPacket(content []byte) ([]byte, error) {
+	return buildFrame(DATAFRAME, content)
+}
+
+type Packet interface {
+	MakeCmdPacket(cmdType string, params string) ([]byte, error)
+	MakeDataPacket(content []byte) ([]byte, error)
 }

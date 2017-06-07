@@ -4,84 +4,19 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
 )
 
-type PeerInfo struct {
-	SerVersion string //Updateme version
-	AppVersion string //AD version
+type Seesion interface {
+	ReadPacket() error
+	WritePacket(data []byte) error
 }
 
-type SSUSlice struct {
-	SSUPacket string
-	SSUType   int
-}
-
-type SSU struct {
-	Md5sum     string //Same Version SSU packet has been unpack or not
-	SSUPackage string //SSU packet name
-	SSUType    int    /*PACKAGE_TYPE = 1 RESTORE_TYPE = 2 EXECUTE_TYPE  = 3 AUTOBAK_NUMS  = 10 */
-	SSUInfo    []SSUSlice
-}
-
-type Unpack struct {
-	FolderPrefix      string //random string
-	CurrentWorkFolder string
-	SSUFolder         string //解压之后的ssu目录
-
-	LocalBackSh     string
-	LocalPreCfgSh   string
-	LocalCfgSh      string
-	LocalUpdHistory string
-	LocalUpdCheck   string
-	ServerAppRe     string
-	ServerAppSh     string
-	ServerCfgPre    string
-	ServerCfgSh     string
-	TempExecFile    string
-	TempRstFile     string
-	TempRetFile     string
-	CustomErrFile   string
-	LoginPwdFile    string
-	Compose         string
-
-	SingleUnpkg  string
-	ComposeUnpkg string
-	PkgTemp      string
-	Download     string
-	AutoBak      string
-
-	UpdatePath string
-}
-
-type Package struct {
-	UpdatingFlag  bool      //updating or not
-	UpdateTime    time.Time //when to update
-	RestoringFlag bool
-	ssuConf       string
-	appConf       string
-}
-
-type Cfg struct {
-	CfgPath    string
-	CfgPathTmp string
-}
-
-type Session struct {
-	Conn net.Conn
-	*PeerInfo
-	*SecData
-}
-
-type Update struct {
-	*SSU
-	*Package
-	*Unpack
-	*Cfg
+func NewSession(conn net.Conn) *session {
+	return &session{Conn: conn, PeerInfo: &PeerInfo{}, SecData: &SecData{}}
 }
 
 //read data from peer and decrypt data, and return data
-func (S *Session) ReadPacket() error {
+func (S *session) ReadPacket() error {
 	//step 1: 分配frame长度的大小的空间
 	frameHeaderBuf := make([]byte, FRAME_HEADER_LEN)
 	var n int
@@ -187,7 +122,7 @@ func (S *Session) ReadPacket() error {
 }
 
 //just send data to peer
-func (S *Session) WritePacket(data []byte) error {
+func (S *session) WritePacket(data []byte) error {
 	_, err := S.Conn.Write(data)
 	return err
 }

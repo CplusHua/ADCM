@@ -11,10 +11,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
-	"path/filepath"
 )
 
 /*
@@ -285,25 +285,25 @@ func FindAllKeyValue(conf, section string, m *sync.RWMutex) (map[string]string, 
 	return sec.KeysHash(), nil
 }
 
-func CompareKeyFromMap(hash map[string]string,key string)(string,error)  {
-	for k, v := range hash{
+func CompareKeyFromMap(hash map[string]string, key string) (string, error) {
+	for k, v := range hash {
 		if key == k {
 			return v, nil
 		}
 	}
-	return "",fmt.Errorf("[CompareKeyFromMap]can't find key:%s",key)
+	return "", fmt.Errorf("[CompareKeyFromMap]can't find key:%s", key)
 }
 
-func ReadValueFromConf(conf,section,key string, m *sync.RWMutex)(string, error){
+func ReadValueFromConf(conf, section, key string, m *sync.RWMutex) (string, error) {
 	m.RLock()
 	cfg, err := ini.Load(conf)
 	if err != nil {
-		return "",fmt.Errorf("[ReadValueFromConf]read key:%s from conf:%s,error:%s",key,conf,err)
+		return "", fmt.Errorf("[ReadValueFromConf]read key:%s from conf:%s,error:%s", key, conf, err)
 	}
 	defer m.RUnlock()
-	return cfg.Section(section).Key(key).String(),nil
+	return cfg.Section(section).Key(key).String(), nil
 }
 
 func SSUPath(path string) string {
-	return strings.Replace(filepath.Base(path),filepath.Ext(path),"",-1)
+	return strings.Replace(filepath.Base(path), filepath.Ext(path), "", -1)
 }

@@ -136,15 +136,15 @@ func unpackPackage(md5 string, U *Update) error {
 	ssuPath, err := JudgeUnpack(md5, U)
 	if err == nil {
 		log.Info("[unpackPackage]find %s in ssu.conf", md5)
-		log.Info("[unpackPackage]don't need to unpack ssu package:%s",U.SSUPackage)
+		log.Info("[unpackPackage]don't need to unpack ssu package:%s", U.SSUPackage)
 		U.SSUFolder = SSUPath(ssuPath)
-		log.Info("[unpackPackage]SSUFolder is %s",U.SSUFolder)
-		return InitEnvironment(U,true)
+		log.Info("[unpackPackage]SSUFolder is %s", U.SSUFolder)
+		return InitEnvironment(U, true)
 	}
 	//因为要解压,每个包解压存放的目录就以包的名字来命令
 	U.SSUFolder = SSUPath(U.SSUPackage)
-	log.Info("[unpackPackage]SSUFolder is %s",U.SSUFolder)
-	if err := InitEnvironment(U,false); err != nil {
+	log.Info("[unpackPackage]SSUFolder is %s", U.SSUFolder)
+	if err := InitEnvironment(U, false); err != nil {
 		return err
 	}
 
@@ -260,7 +260,7 @@ func LoadAppData(AppPath string) {
 	return
 }
 
-func PutDesApp(S *Session, LocalFile, RemoteFile string) error {
+func PutDesApp(S *session, LocalFile, RemoteFile string) error {
 	if !IsPathExist(LocalFile) {
 		log.Error("[PutDesApp]%s don't exist", LocalFile)
 		return fmt.Errorf("%s don't exist", LocalFile)
@@ -300,7 +300,7 @@ func PutDesApp(S *Session, LocalFile, RemoteFile string) error {
 }
 
 //如果desApps的路径包含有app就糟糕了　TODO: i will make it right later
-func UpdateApps(S *Session, U *Update, desApps []string) error {
+func UpdateApps(S *session, U *Update, desApps []string) error {
 	for _, desApp := range desApps {
 		app := strings.TrimSuffix(desApp, "_des")
 		appsh := strings.Replace(app, "app", "appsh", 1)
@@ -332,7 +332,7 @@ func RestoreDefaultPriv() error {
 	return nil
 }
 
-func UpdateSinglePacket(S *Session, U *Update) error {
+func UpdateSinglePacket(S *session, U *Update) error {
 	if err := CheckUpdateCondition(S, U); err != nil {
 		return err
 	}
@@ -344,7 +344,7 @@ func UpdateSinglePacket(S *Session, U *Update) error {
 	return nil
 }
 
-func CheckUpdateCondition(S *Session, U *Update) error {
+func CheckUpdateCondition(S *session, U *Update) error {
 	log.Info("[CheckUpdateCondition]begin to check the update confition by appre.")
 	if err := Put(S, filepath.Join(U.SingleUnpkg, "apppre"), U.ServerAppRe); err != nil {
 		return err
@@ -403,7 +403,7 @@ func InitClient(appVersion string) *Update {
 	return U
 }
 
-func InitEnvironment(U *Update,flag bool) error {
+func InitEnvironment(U *Update, flag bool) error {
 	log.Info("[InitEnvironment]now init enviroment for update or restore")
 	U.SingleUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/unpkg/")
 	U.ComposeUnpkg = filepath.Join(U.CurrentWorkFolder, U.FolderPrefix, U.SSUFolder, "/compose_unpkg/")
@@ -429,7 +429,7 @@ func InitEnvironment(U *Update,flag bool) error {
 			return err
 		}
 	}
-	log.Warn("[InitEnvironment]U.singleUnpkg is %s",U.SingleUnpkg)
+	log.Warn("[InitEnvironment]U.singleUnpkg is %s", U.SingleUnpkg)
 
 	return nil
 }
@@ -510,7 +510,7 @@ func WriteMd5ToConf(md5, ssu string, u *Update) error {
 		return err
 	}
 	num, err1 := strconv.Atoi(value)
-	log.Info("[WriteMd5ToConf]app.conf show ssunum is %d",num)
+	log.Info("[WriteMd5ToConf]app.conf show ssunum is %d", num)
 	if err1 != nil {
 		return err1
 	}
@@ -565,7 +565,7 @@ func SinglePackageMd5(ssuPath string) (string, error) {
 
 }
 
-func PrepareUpgrade(S *Session, U *Update) (string, error) {
+func PrepareUpgrade(S *session, U *Update) (string, error) {
 	log.Info("[PrepareUpgrade]init to upgrade or restore  the package:%s", U.SSUPackage)
 	if U.UpdatingFlag && (time.Now().Sub(U.UpdateTime) < UPD_TIMEOUT*time.Second) {
 		return "", fmt.Errorf("[PrepareUpgrade]now update the package:%s,begin at %v\n ....", U.SSUPackage, U.UpdateTime)
